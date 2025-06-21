@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Recognition for Kids - Bug Free</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .sentence-display {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sentence {
+            font-size: 2.2em;
+            line-height: 1.6;
+            font-weight: bold;
+        }
+
+        .word {
+            display: inline-block;
+            margin: 5px 10px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            transition: all 0.4s ease;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .word.current {
+            background: #FFD700;
+            color: #000;
+            transform: scale(1.3);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+            animation: glow 1.5s infinite alternate;
+        }
+
+        .word.correct {
+            background: #4CAF50;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .word.wrong {
+            background: #f44336;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 25px rgba(255, 215, 0, 0.7); }
+            to { box-shadow: 0 0 35px rgba(255, 215, 0, 1); }
+        }
+
+        .controls {
+            margin: 40px 0;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border: none;
+            color: white;
+            padding: 18px 35px;
+            font-size: 1.3em;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 0 15px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+        }
+
+        .status-area {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text {
+            font-size: 1.4em;
+            margin-bottom: 10px;
+        }
+
+        .timer-display {
+            font-size: 3.5em;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            margin-top: 10px;
+        }
+
+        .score-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .score-card {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .score-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 5px;
+        }
+
+        .score-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .results-panel {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 30px 0;
+            display: none;
+        }
+
+        .final-grade {
+            font-size: 5em;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+            margin: 20px 0;
+        }
+
+        .final-message {
+            font-size: 1.5em;
+            margin: 20px 0;
+        }
+
+        .listening-indicator {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .processing-indicator {
+            color: #2196F3;
+            font-weight: bold;
+        }
+
+        .error-indicator {
+            color: #ff5722;
+            font-weight: bold;
+        }
+
+        .attempt-counter {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Kids Speech Test 🎤</h1>
+        
+        <div class="sentence-display">
+            <div class="sentence" id="sentenceContainer">
+                <span class="word" data-index="0">Hello</span>
+                <span class="word" data-index="1">Sanjay</span>
+                <span class="word" data-index="2">is</span>
+                <span class="word" data-index="3">my</span>
+                <span class="word" data-index="4">name</span>
+                <span class="word" data-index="5">I</span>
+                <span class="word" data-index="6">am</span>
+                <span class="word" data-index="7">a</span>
+                <span class="word" data-index="8">fresher</span>
+            </div>
+        </div>
+
+
+
+        
+
+        <div class="controls">
+            <button class="btn" id="startButton" onclick="gameController.startGame()">
+                🚀 Start Test
+            </button>
+            <button class="btn" id="stopButton" onclick="gameController.stopGame()" disabled>
+                🛑 Stop Test
+            </button>
+        </div>
+
+        <div class="status-area">
+            <div class="status-text" id="statusText">Click "Start Test" to begin!</div>
+            <div class="timer-display" id="timerDisplay"></div>
+            <div class="attempt-counter" id="attemptCounter" style="display: none;"></div>
+        </div>
+
+        <div class="score-panel">
+            <div class="score-card">
+                <div class="score-number" id="correctScore">0</div>
+                <div class="score-label">✅ Correct</div>
+            </div>
+            <div class="score-card">
+                <div class="score-number" id="wrongScore">0</div>
+                <div class="score-label">❌ Wrong</div>
+            </div>
+            <div class="score-card">
+                <div class="score-number" id="timeoutScore">0</div>
+                <div class="score-label">⏰ Timeout</div>
+            </div>
+            <div class="score-card">
+                <div class="score-number" id="currentWordDisplay">-</div>
+                <div class="score-label">📍 Current</div>
+            </div>
+        </div>
+
+        <div class="results-panel" id="resultsPanel">
+            <h2>🎉 Test Complete! 🎉</h2>
+            <div class="final-grade" id="finalGrade">A+</div>
+            <div class="final-message" id="finalMessage">Excellent work!</div>
+            <button class="btn" onclick="gameController.resetGame()">🔄 Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Clean, bug-free speech recognition system
+        class SpeechGameController {
+            constructor() {
+                // Game data
+                this.targetWords = ['hello', 'sanjay', 'is', 'my', 'name', 'i', 'am', 'a', 'fresher'];
+                this.currentWordIndex = 0;
+                this.currentAttempt = 0;
+                this.maxAttempts = 2;
+                
+                // Game state
+                this.isGameActive = false;
+                this.isListening = false;
+                this.isProcessing = false;
+                
+                // Scores
+                this.scores = {
+                    correct: 0,
+                    wrong: 0,
+                    timeout: 0
+                };
+                
+                // Timer
+                this.countdownTimer = null;
+                this.timeRemaining = 0;
+                
+                // Speech recognition
+                this.recognition = null;
+                this.initializeSpeechRecognition();
+                
+                // DOM elements
+                this.statusText = document.getElementById('statusText');
+                this.timerDisplay = document.getElementById('timerDisplay');
+                this.attemptCounter = document.getElementById('attemptCounter');
+                this.startButton = document.getElementById('startButton');
+                this.stopButton = document.getElementById('stopButton');
+                
+                console.log('🎮 Game controller initialized');
+            }
+            
+            initializeSpeechRecognition() {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    this.showStatus('❌ Speech recognition not supported in this browser', 'error-indicator');
+                    return;
+                }
+                
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+                
+                // Optimal settings for reliability
+                this.recognition.continuous = false;
+                this.recognition.interimResults = false;
+                this.recognition.lang = 'en-US';
+                this.recognition.maxAlternatives = 3;
+                
+                // Event handlers
+                this.recognition.onstart = () => {
+                    console.log('🎤 Recognition started');
+                    this.isListening = true;
+                    this.showStatus('🎤 Listening... Say the word!', 'listening-indicator');
+                };
+                
+                this.recognition.onresult = (event) => {
+                    console.log('📝 Recognition result received');
+                    this.handleSpeechResult(event);
+                };
+                
+                this.recognition.onerror = (event) => {
+                    console.log('❌ Recognition error:', event.error);
+                    this.handleSpeechError(event.error);
+                };
+                
+                this.recognition.onend = () => {
+                    console.log('🏁 Recognition ended');
+                    this.isListening = false;
+                    
+                    // If game is still active and we're not processing, restart listening
+                    if (this.isGameActive && !this.isProcessing && this.currentWordIndex < this.targetWords.length) {
+                        setTimeout(() => {
+                            this.startListeningForCurrentWord();
+                        }, 500);
+                    }
+                };
+                
+                console.log('🎤 Speech recognition initialized');
+            }
+            
+            startGame() {
+                console.log('🚀 Starting game');
+                
+                // Reset game state
+                this.currentWordIndex = 0;
+                this.currentAttempt = 0;
+                this.scores = { correct: 0, wrong: 0, timeout: 0 };
+                this.isGameActive = true;
+                this.isProcessing = false;
+                
+                // Update UI
+                this.startButton.disabled = true;
+                this.stopButton.disabled = false;
+                document.getElementById('resultsPanel').style.display = 'none';
+                
+                // Reset word styles
+                this.resetWordStyles();
+                this.updateScoreDisplay();
+                this.highlightCurrentWord();
+                
+                // Start countdown
+                this.showStatus('🎯 Get ready! Starting in 3 seconds...', '');
+                
+                setTimeout(() => {
+                    if (this.isGameActive) {
+                        this.startCurrentWordSession();
+                    }
+                }, 3000);
+            }
+            
+            stopGame() {
+                console.log('🛑 Stopping game');
+                
+                this.isGameActive = false;
+                this.isProcessing = false;
+                this.stopListening();
+                this.clearTimer();
+                
+                // Update UI
+                this.startButton.disabled = false;
+                this.stopButton.disabled = true;
+                this.resetWordStyles();
+                
+                this.showStatus('🛑 Game stopped. Click "Start Test" to play again!', '');
+                this.clearTimerDisplay();
+                this.hideAttemptCounter();
+                document.getElementById('currentWordDisplay').textContent = '-';
+            }
+            
+            resetGame() {
+                this.stopGame();
+                this.scores = { correct: 0, wrong: 0, timeout: 0 };
+                this.updateScoreDisplay();
+                document.getElementById('resultsPanel').style.display = 'none';
+                this.showStatus('Ready for a new test!', '');
+            }
+            
+            startCurrentWordSession() {
+                if (!this.isGameActive || this.currentWordIndex >= this.targetWords.length) {
+                    return;
+                }
+                
+                const currentWord = this.targetWords[this.currentWordIndex];
+                console.log(`🎯 Starting session for word: "${currentWord}" (attempt ${this.currentAttempt + 1}/${this.maxAttempts})`);
+                
+                this.showAttemptCounter();
+                this.startTimer();
+                
+                setTimeout(() => {
+                    this.startListeningForCurrentWord();
+                }, 500);
+            }
+            
+            startListeningForCurrentWord() {
+                if (!this.isGameActive || this.isListening || this.isProcessing) {
+                    return;
+                }
+                
+                try {
+                    console.log('🎤 Starting to listen...');
+                    this.recognition.start();
+                } catch (error) {
+                    console.log('🔄 Recognition start error, retrying...', error);
+                    setTimeout(() => {
+                        if (this.isGameActive && !this.isListening) {
+                            this.startListeningForCurrentWord();
+                        }
+                    }, 1000);
+                }
+            }
+            
+            stopListening() {
+                if (this.recognition && this.isListening) {
+                    console.log('🤐 Stopping recognition');
+                    try {
+                        this.recognition.stop();
+                    } catch (error) {
+                        console.log('Recognition stop error:', error);
+                    }
+                }
+                this.isListening = false;
+            }
+            
+            handleSpeechResult(event) {
+                if (this.isProcessing || !this.isGameActive) {
+                    return;
+                }
+                
+                this.isProcessing = true;
+                this.stopListening();
+                this.clearTimer();
+                
+                // Get the spoken text
+                let spokenText = '';
+                if (event.results && event.results.length > 0) {
+                    spokenText = event.results[0][0].transcript.toLowerCase().trim();
+                    console.log(`🗣️ Heard: "${spokenText}"`);
+                }
+                
+                // Check if correct
+                const currentWord = this.targetWords[this.currentWordIndex];
+                const isCorrect = this.isWordCorrect(spokenText, currentWord);
+                
+                console.log(`🎯 "${spokenText}" vs "${currentWord}" = ${isCorrect ? 'CORRECT' : 'WRONG'}`);
+                
+                if (isCorrect) {
+                    this.handleCorrectWord();
+                } else {
+                    this.handleWrongWord(spokenText);
+                }
+            }
+            
+            handleSpeechError(errorType) {
+                if (!this.isGameActive || this.isProcessing) {
+                    return;
+                }
+                
+                console.log(`🔧 Handling speech error: ${errorType}`);
+                
+                if (errorType === 'no-speech') {
+                    // This will be handled by timer timeout
+                    return;
+                }
+                
+                // For other errors, restart listening
+                setTimeout(() => {
+                    if (this.isGameActive && !this.isListening && !this.isProcessing) {
+                        this.startListeningForCurrentWord();
+                    }
+                }, 1000);
+            }
+            
+            isWordCorrect(spoken, target) {
+                if (!spoken || !target) return false;
+                
+                const cleanSpoken = spoken.toLowerCase().trim();
+                const cleanTarget = target.toLowerCase().trim();
+                
+                // Direct match
+                if (cleanSpoken === cleanTarget) {
+                    return true;
+                }
+                
+                // Check if spoken text contains the target word
+                if (cleanSpoken.includes(cleanTarget)) {
+                    return true;
+                }
+                
+                // Special cases for small words
+                const wordMap = {
+                    'is': ['is', 'iz'],
+                    'my': ['my', 'mai'],
+                    'i': ['i', 'eye'],
+                    'am': ['am', 'em'],
+                    'a': ['a', 'eh']
+                };
+                
+                if (wordMap[cleanTarget]) {
+                    return wordMap[cleanTarget].some(variant => 
+                        cleanSpoken === variant || cleanSpoken.includes(variant)
+                    );
+                }
+                
+                return false;
+            }
+            
+            handleCorrectWord() {
+                console.log('✅ Correct word!');
+                
+                this.scores.correct++;
+                this.markWordAsCorrect();
+                this.showStatus(`✅ Correct! Great job saying "${this.targetWords[this.currentWordIndex]}"!`, 'listening-indicator');
+                this.updateScoreDisplay();
+                this.hideAttemptCounter();
+                
+                setTimeout(() => {
+                    this.moveToNextWord();
+                }, 2000);
+            }
+            
+            handleWrongWord(spokenText) {
+                this.currentAttempt++;
+                const currentWord = this.targetWords[this.currentWordIndex];
+                
+                console.log(`❌ Wrong word attempt ${this.currentAttempt}/${this.maxAttempts}`);
+                
+                if (this.currentAttempt >= this.maxAttempts) {
+                    // Max attempts reached
+                    this.scores.wrong++;
+                    this.markWordAsWrong();
+                    this.showStatus(`❌ Wrong! The word was "${currentWord}". Moving to next word...`, 'error-indicator');
+                    this.updateScoreDisplay();
+                    this.hideAttemptCounter();
+                    
+                    setTimeout(() => {
+                        this.moveToNextWord();
+                    }, 3000);
+                } else {
+                    // Give another chance
+                    this.showStatus(`❌ Wrong! You said "${spokenText}". Try "${currentWord}" again!`, 'error-indicator');
+                    this.updateAttemptCounter();
+                    
+                    setTimeout(() => {
+                        if (this.isGameActive) {
+                            this.isProcessing = false;
+                            this.startCurrentWordSession();
+                        }
+                    }, 2000);
+                }
+            }
+            
+            handleTimeout() {
+                if (this.isProcessing || !this.isGameActive) {
+                    return;
+                }
+                
+                this.isProcessing = true;
+                this.stopListening();
+                this.currentAttempt++;
+                
+                const currentWord = this.targetWords[this.currentWordIndex];
+                console.log(`⏰ Timeout attempt ${this.currentAttempt}/${this.maxAttempts}`);
+                
+                if (this.currentAttempt >= this.maxAttempts) {
+                    // Max attempts reached
+                    this.scores.timeout++;
+                    this.markWordAsWrong();
+                    this.showStatus(`⏰ Time up! The word was "${currentWord}". Moving to next word...`, 'error-indicator');
+                    this.updateScoreDisplay();
+                    this.hideAttemptCounter();
+                    
+                    setTimeout(() => {
+                        this.moveToNextWord();
+                    }, 3000);
+                } else {
+                    // Give another chance
+                    this.showStatus(`⏰ Time up! Try saying "${currentWord}" again!`, 'error-indicator');
+                    this.updateAttemptCounter();
+                    
+                    setTimeout(() => {
+                        if (this.isGameActive) {
+                            this.isProcessing = false;
+                            this.startCurrentWordSession();
+                        }
+                    }, 2000);
+                }
+            }
+            
+            moveToNextWord() {
+                this.currentWordIndex++;
+                this.currentAttempt = 0;
+                this.isProcessing = false;
+                
+                if (this.currentWordIndex >= this.targetWords.length) {
+                    this.completeGame();
+                } else {
+                    this.highlightCurrentWord();
+                    setTimeout(() => {
+                        if (this.isGameActive) {
+                            this.startCurrentWordSession();
+                        }
+                    }, 1000);
+                }
+            }
+            
+            completeGame() {
+                console.log('🏁 Game completed');
+                
+                this.isGameActive = false;
+                this.stopListening();
+                this.clearTimer();
+                
+                // Calculate results
+                const totalWords = this.scores.correct + this.scores.wrong + this.scores.timeout;
+                const percentage = totalWords > 0 ? Math.round((this.scores.correct / totalWords) * 100) : 0;
+                
+                let grade, message;
+                if (percentage >= 90) {
+                    grade = 'A+';
+                    message = '🌟 Outstanding! Perfect pronunciation!';
+                } else if (percentage >= 80) {
+                    grade = 'A';
+                    message = '🎉 Excellent work! Great job!';
+                } else if (percentage >= 70) {
+                    grade = 'B';
+                    message = '👍 Good job! Keep practicing!';
+                } else if (percentage >= 60) {
+                    grade = 'C';
+                    message = '📚 Not bad! More practice needed!';
+                } else {
+                    grade = 'D';
+                    message = '💪 Keep trying! Practice makes perfect!';
+                }
+                
+                // Show results
+                document.getElementById('finalGrade').textContent = grade;
+                document.getElementById('finalMessage').textContent = message;
+                document.getElementById('resultsPanel').style.display = 'block';
+                
+                this.startButton.disabled = false;
+                this.stopButton.disabled = true;
+                
+                this.showStatus(`🎉 Complete! Grade: ${grade} (${percentage}%)`, 'listening-indicator');
+                this.clearTimerDisplay();
+                this.hideAttemptCounter();
+            }
+            
+            // Timer functions
+            startTimer() {
+                this.timeRemaining = 6; // 6 seconds per word
+                this.updateTimerDisplay();
+                
+                this.countdownTimer = setInterval(() => {
+                    this.timeRemaining--;
+                    this.updateTimerDisplay();
+                    
+                    if (this.timeRemaining <= 0) {
+                        this.clearTimer();
+                        this.handleTimeout();
+                    }
+                }, 1000);
+            }
+            
+            clearTimer() {
+                if (this.countdownTimer) {
+                    clearInterval(this.countdownTimer);
+                    this.countdownTimer = null;
+                }
+            }
+            
+            updateTimerDisplay() {
+                if (this.timeRemaining > 0) {
+                    this.timerDisplay.textContent = this.timeRemaining;
+                } else {
+                    this.clearTimerDisplay();
+                }
+            }
+            
+            clearTimerDisplay() {
+                this.timerDisplay.textContent = '';
+            }
+            
+            // UI update functions
+            showStatus(message, className = '') {
+                this.statusText.innerHTML = message;
+                this.statusText.className = `status-text ${className}`;
+            }
+            
+            updateScoreDisplay() {
+                document.getElementById('correctScore').textContent = this.scores.correct;
+                document.getElementById('wrongScore').textContent = this.scores.wrong;
+                document.getElementById('timeoutScore').textContent = this.scores.timeout;
+            }
+            
+            highlightCurrentWord() {
+                // Remove all highlights
+                document.querySelectorAll('.word').forEach(word => {
+                    word.classList.remove('current');
+                });
+                
+                // Highlight current word
+                if (this.currentWordIndex < this.targetWords.length) {
+                    const currentWordElement = document.querySelector(`[data-index="${this.currentWordIndex}"]`);
+                    if (currentWordElement) {
+                        currentWordElement.classList.add('current');
+                    }
+                    
+                    const currentWord = this.targetWords[this.currentWordIndex];
+                    document.getElementById('currentWordDisplay').textContent = 
+                        currentWord.charAt(0).toUpperCase() + currentWord.slice(1);
+                }
+            }
+            
+            markWordAsCorrect() {
+                const wordElement = document.querySelector(`[data-index="${this.currentWordIndex}"]`);
+                if (wordElement) {
+                    wordElement.classList.remove('current');
+                    wordElement.classList.add('correct');
+                }
+            }
+            
+            markWordAsWrong() {
+                const wordElement = document.querySelector(`[data-index="${this.currentWordIndex}"]`);
+                if (wordElement) {
+                    wordElement.classList.remove('current');
+                    wordElement.classList.add('wrong');
+                }
+            }
+            
+            resetWordStyles() {
+                document.querySelectorAll('.word').forEach(word => {
+                    word.classList.remove('current', 'correct', 'wrong');
+                });
+                document.getElementById('currentWordDisplay').textContent = '-';
+            }
+            
+            showAttemptCounter() {
+                this.updateAttemptCounter();
+                this.attemptCounter.style.display = 'block';
+            }
+            
+            updateAttemptCounter() {
+                this.attemptCounter.textContent = `Attempt ${this.currentAttempt + 1} of ${this.maxAttempts}`;
+            }
+            
+            hideAttemptCounter() {
+                this.attemptCounter.style.display = 'none';
+            }
+        }
+        
+        // Initialize the game
+        const gameController = new SpeechGameController();
+        
+        // Handle page visibility
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && gameController.isGameActive) {
+                gameController.stopGame();
+            }
+        });
+    </script>
+</body>
+</html>
